@@ -2,7 +2,9 @@
 #include <iostream>
 #include <pcl/io/io.h>
 #include <pcl/io/pcd_io.h>
-    
+#include <thread>
+#include <chrono>
+
 int user_data;
     
 void 
@@ -30,17 +32,34 @@ viewerPsycho (pcl::visualization::PCLVisualizer& viewer)
     //FIXME: possible race condition here:
     user_data++;
 }
-    
+
+pcl::visualization::PCLVisualizer::Ptr simpleVis (pcl::PointCloud<pcl::PointXYZ>::ConstPtr cloud)
+{
+  // --------------------------------------------
+  // -----Open 3D viewer and add point cloud-----
+  // --------------------------------------------
+  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  viewer->setBackgroundColor (0, 0, 0);
+  viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+  viewer->addCoordinateSystem (1.0);
+  viewer->initCameraParameters ();
+  return (viewer);
+}
+
 int 
 main ()
 {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::io::loadPCDFile ("data/lo_pcd.pcd", *cloud);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::io::loadPCDFile ("../data/lo_pcd.pcd", *cloud);
     
-    pcl::visualization::CloudViewer viewer("Cloud Viewer");
+    pcl::visualization::PCLVisualizer::Ptr viewer;
+
+    viewer = simpleVis(cloud);
+    // pcl::visualization::CloudViewer viewer("Cloud Viewer");
     
     //blocks until the cloud is actually rendered
-    viewer.showCloud(cloud);
+    // viewer.showCloud(cloud);
     
     //use the following functions to get access to the underlying more advanced/powerful
     //PCLVisualizer
@@ -50,12 +69,15 @@ main ()
     
     //This will get called once per visualization iteration
     // viewer.runOnVisualizationThread (viewerPsycho);
-    while (!viewer.wasStopped ())
+    int delay =100;
+    while (!viewer->wasStopped ())
     {
     //you can also do cool processing here
     //FIXME: Note that this is running in a separate thread from viewerPsycho
     //and you should guard against race conditions yourself...
-    user_data++;
+    // user_data++;
+    viewer->spinOnce(100);
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
     }
     return 0;
 }
